@@ -1,0 +1,224 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum Role {
+  AUTHOR
+  ADMIN
+}
+
+enum BookStatus {
+  MANUSCRIPT_RECEIVED
+  EDITING
+  COVER_DESIGN
+  TYPESETTING
+  PROOFREADING
+  ISBN_ASSIGNMENT
+  PRINTING
+  DISTRIBUTION_SETUP
+  PUBLISHED
+}
+
+enum PrintPartner {
+  IN_HOUSE
+  REPRO_INDIA
+  EPITOME_BOOKS
+}
+
+enum Platform {
+  AMAZON_INDIA
+  FLIPKART
+  AMAZON_US
+  AMAZON_UK
+  BOOKLEAF_STORE
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketCategory {
+  ROYALTY_PAYMENTS
+  ISBN_METADATA
+  PRINTING_QUALITY
+  DISTRIBUTION_AVAILABILITY
+  BOOK_STATUS_PRODUCTION
+  GENERAL_INQUIRY
+}
+/// Declared most-urgent first. Postgres sorts enums by declaration order,
+/// so ORDER BY priority ASC puts CRITICAL at the top of the queue.
+enum TicketPriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum AiStatus {
+  PENDING
+  COMPLETED
+  FALLBACK
+  FAILED
+}
+
+enum AiOperation {
+  CLASSIFY
+  DRAFT
+}
+
+model User {
+  id              String          @id @default(cuid())
+  email           String          @unique
+  passwordHash    String          @map("password_hash")
+  name            String
+  role            Role
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  author          Author?
+  assignedTickets Ticket[]        @relation("TicketAssignee")
+  messages        TicketMessage[]
+  internalNotes   InternalNote[]
+
+  @@map("users")
+}
+
+model Author {
+  id       String    @id
+  userId   String    @unique @map("user_id")
+  phone    String?
+  city     String?
+  joinedAt DateTime? @map("joined_at")
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  books    Book[]
+  tickets  Ticket[]
+
+  @@map("authors")
+}
+
+model Book {
+  id                  String        @id
+  authorId            String        @map("author_id")
+  title               String
+  isbn                String?       @unique
+  genre               String?
+  publicationDate     DateTime?     @map("publication_date")
+  mrp                 Decimal?      @db.Decimal(10, 2)
+  royaltyPerCopy      Decimal?      @map("royalty_per_copy") @db.Decimal(12, 2)
+  copiesSold          Int           @default(0) @map("copies_sold")
+  royaltyEarned       Decimal       @default(0) @map("royalty_earned") @db.Decimal(12, 2)
+  royaltyPaid         Decimal       @default(0) @map("royalty_paid") @db.Decimal(12, 2)
+  lastRoyaltyPayoutAt DateTime?     @map("last_royalty_payout_at")
+  printPartner        PrintPartner? @map("print_partner")
+  platforms           Platform[]    @default([])
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+  author              Author        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  tickets             Ticket[]
+  status              BookStatus
+
+  @@index([authorId])
+  @@map("books")
+}
+
+model Ticket {
+  id                 String          @id @default(cuid())
+  number             Int             @unique @default(autoincrement())
+  authorId           String          @map("author_id")
+  /// Null = "General / Account Level" query.
+  bookId             String?         @map("book_id")
+  subject            String
+  description        String
+  status             TicketStatus    @default(OPEN)
+  category           TicketCategory?
+  priority           TicketPriority?
+  aiStatus           AiStatus        @default(PENDING) @map("ai_status")
+  aiCategory         TicketCategory? @map("ai_category")
+  aiPriority         TicketPriority? @map("ai_priority")
+  aiReasoning        String?         @map("ai_reasoning")
+  categoryOverridden Boolean         @default(false) @map("category_overridden")
+  priorityOverridden Boolean         @default(false) @map("priority_overridden")
+  assigneeId         String?         @map("assignee_id")
+  attachmentName     String?         @map("attachment_name")
+  firstResponseAt    DateTime?       @map("first_response_at")
+  resolvedAt         DateTime?       @map("resolved_at")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+  author             Author          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  book               Book?           @relation(fields: [bookId], references: [id], onDelete: SetNull)
+  assignee           User?           @relation("TicketAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  messages           TicketMessage[]
+  notes              InternalNote[]
+  aiDraft            AiDraft?
+  aiRuns             AiRun[]
+
+  @@index([status, priority, createdAt])
+  @@index([category])
+  @@index([assigneeId])
+  @@index([authorId, createdAt])
+  @@map("tickets")
+}
+
+model TicketMessage {
+  id         String   @id @default(cuid())
+  ticketId   String   @map("ticket_id")
+  senderId   String   @map("sender_id")
+  body       String
+  aiAssisted Boolean  @default(false) @map("ai_assisted")
+  createdAt  DateTime @default(now()) @map("created_at")
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  sender     User     @relation(fields: [senderId], references: [id])
+
+  @@index([ticketId, createdAt])
+  @@map("ticket_messages")
+}
+
+model InternalNote {
+  id        String   @id @default(cuid())
+  ticketId  String   @map("ticket_id")
+  adminId   String   @map("admin_id")
+  body      String
+  createdAt DateTime @default(now()) @map("created_at")
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  admin     User     @relation(fields: [adminId], references: [id])
+
+  @@index([ticketId, createdAt])
+  @@map("internal_notes")
+}
+
+model AiDraft {
+  ticketId            String   @id @map("ticket_id")
+  body                String
+  model               String
+  basedOnMessageCount Int      @map("based_on_message_count")
+  generatedAt         DateTime @default(now()) @map("generated_at")
+  ticket              Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@map("ai_drafts")
+}
+
+model AiRun {
+  id              String      @id @default(cuid())
+  ticketId        String?     @map("ticket_id")
+  operation       AiOperation
+  model           String
+  inputTokens     Int         @default(0) @map("input_tokens")
+  outputTokens    Int         @default(0) @map("output_tokens")
+  cacheReadTokens Int         @default(0) @map("cache_read_tokens")
+  latencyMs       Int         @map("latency_ms")
+  success         Boolean
+  errorCode       String?     @map("error_code")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  ticket          Ticket?     @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+
+  @@index([operation, createdAt])
+  @@map("ai_runs")
+}
