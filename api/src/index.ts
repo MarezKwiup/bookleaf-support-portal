@@ -1,6 +1,7 @@
 import { env } from './config/env';
 import { prisma } from './lib/prisma';
 import { createApp } from './app';
+import { events } from './lib/events';
 
 const app = createApp();
 
@@ -14,6 +15,8 @@ const shutdown = async (signal: string) => {
     await prisma.$disconnect();
     process.exit(0);
 };
+
+events.on('ticket.created', (e) => console.log('📨 ticket.created', e));
 
 process.on('SIGTERM', () => void shutdown('SIGTERM'));
 process.on('SIGINT', () => void shutdown('SIGINT'));

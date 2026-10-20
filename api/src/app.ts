@@ -7,6 +7,7 @@ import { authenticate, requireRole } from './middleware/auth';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { authRouter } from './modules/auth/auth.routes';
 import { booksRouter } from './modules/books/books.routes';
+import { ticketsRouter } from './modules/tickets/tickets.routes';
 
 export const createApp = () => {
     const app = express();
@@ -30,6 +31,7 @@ export const createApp = () => {
     const api = express.Router();
     api.use('/auth', authRouter);
     api.use('/books', booksRouter);
+    api.use('/tickets', ticketsRouter);
     app.use('/api/v1', api);
 
     app.use(notFoundHandler);
