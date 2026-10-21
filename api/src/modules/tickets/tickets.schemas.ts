@@ -35,5 +35,26 @@ export const listTicketsQuery = z.object({
     pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
 
+export const updateTicketSchema = z.object({
+    status: z.enum(TicketStatus).optional(),
+    category: z.enum(TicketCategory).optional(),
+    priority: z.enum(TicketPriority).optional(),
+    assigneeId: z.string().trim().min(1).nullable().optional(),
+})
+.refine((body) => Object.values(body).some((v) => v !== undefined), {
+message: 'Provide at least one field to update',
+});
+
+export const createMessageSchema = z.object({
+    body: z.string().trim().min(1, 'Message cannot be empty').max(10000),
+    aiAssisted: z.boolean().default(false),
+});
+
+export const createNoteSchema = z.object({
+    body: z.string().trim().min(1, 'Note cannot be empty').max(5000),
+});
+
 export type CreateTicketInput = z.infer<typeof createTicketSchema>;
 export type ListTicketsQuery = z.infer<typeof listTicketsQuery>;
+export type UpdateTicketInput = z.infer<typeof updateTicketSchema>;
+export type CreateMessageInput = z.infer<typeof createMessageSchema>;
