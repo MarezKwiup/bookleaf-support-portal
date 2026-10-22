@@ -13,7 +13,7 @@ const envSchema = z.object({
   CORS_ORIGINS: z.string().default('http://localhost:4000')
                     .transform((value) => value.split(',').map((origin) => origin.trim()).filter(Boolean)),
   ANTHROPIC_API_KEY: z.string().optional(),
-  AI_MODEL: z.string().default('claude-haiku-4-5'),
+  AI_MODEL: z.string().default('claude-haiku-5-5'),
   AI_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
 });
 

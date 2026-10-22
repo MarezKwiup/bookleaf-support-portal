@@ -10,6 +10,8 @@ import {
   updateTicketSchema,
 } from "./tickets.schemas";
 import { ticketsService } from "./tickets.service";
+import { notFound } from "../../lib/errors";
+import { classifyTicket } from "../ai/classifier";
 
 export const ticketsRouter = Router();
 ticketsRouter.use(authenticate);
@@ -82,4 +84,11 @@ ticketsRouter.post(
         res.status(201).json({ data: note });
     }
 )
+
+/** POST /api/v1/tickets/:id/classify: admin re-runs AI classification (e.g. after an outage). */
+ticketsRouter.post('/:id/classify', requireRole('ADMIN'), validate({ params: ticketIdParams }), async (req, res) => {
+  const { id } = res.locals.validated.params;
+  if (!(await classifyTicket(id))) throw notFound('Ticket');
+  res.json({ data: await ticketsService.getById(req.user!, id )});
+});
 
