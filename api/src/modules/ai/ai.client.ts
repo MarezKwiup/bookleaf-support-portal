@@ -25,6 +25,7 @@ interface CompleteParams {
     user: string; // per ticket context
     maxTokens: number;
     jsonSchema?: Record<string, unknown>; //model returns to this defined schema
+    effort: 'low' | 'medium' | 'high';
 }
 
 // Maps sdk error to codes for logs
@@ -76,10 +77,11 @@ export async function complete(params: CompleteParams): Promise<string> {
             // cache_control marks the system prompt as cacheable: repeat calls read it
             system: [{ type: 'text', text: params.system, cache_control: { type: 'ephemeral' } }],
             messages: [{ role: 'user', content: params.user }],
-            ...(params.jsonSchema
-                ? { output_config: { format: { type: 'json_schema', schema: params.jsonSchema } } }
-                : {}
-            ),
+            thinking: { type: 'disabled' },
+            output_config: {
+                effort: params.effort,
+                ...(params.jsonSchema ? { format: { type: 'json_schema', schema: params.jsonSchema } } : {}),
+            },
         });
     } catch (err) {
         const code = toErrorCode(err);

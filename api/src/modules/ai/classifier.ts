@@ -80,6 +80,7 @@ export async function classifyText(input: ClassifyInput): Promise<{result: Class
             system: SYSTEM_PROMPT,
             user: buildUserMessage(input.subject, input.description, input.book),
             maxTokens: 300,
+            effort: 'low',
             jsonSchema: CLASSIFICATION_JSON_SCHEMA,
         });
         return { result: classificationSchema.parse(JSON.parse(raw)), status: 'COMPLETED' };

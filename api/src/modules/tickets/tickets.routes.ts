@@ -12,6 +12,7 @@ import {
 import { ticketsService } from "./tickets.service";
 import { notFound } from "../../lib/errors";
 import { classifyTicket } from "../ai/classifier";
+import { getDraft } from "../ai/drafter";
 
 export const ticketsRouter = Router();
 ticketsRouter.use(authenticate);
@@ -91,4 +92,14 @@ ticketsRouter.post('/:id/classify', requireRole('ADMIN'), validate({ params: tic
   if (!(await classifyTicket(id))) throw notFound('Ticket');
   res.json({ data: await ticketsService.getById(req.user!, id )});
 });
+
+/** GET /api/v1/tickets/:id/draft: AI draft reply (cached; regenerated if the thread changed). */
+ticketsRouter.get('/:id/draft', requireRole('ADMIN'), validate({ params: ticketIdParams }), async(req, res) => {
+  res.json({ data: await getDraft(res.locals.validated.params.id, { regenerate: false })});
+})
+
+/** POST /api/v1/tickets/:id/draft: force a fresh draft ("Regenerate" button). */
+ticketsRouter.post('/:id/draft', requireRole('ADMIN'), validate({ params: ticketIdParams }), async(req, res) => {
+  res.json({ data: await getDraft(res.locals.validated.params.id, { regenerate: true })});
+})
 
