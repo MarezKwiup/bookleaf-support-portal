@@ -1,10 +1,11 @@
 {
     "name": "bookleaf-support-portal",
     "private": true,
-    "workspaces": ["api"],
+    "workspaces": ["api", "web"],
     "scripts": {
         "dev:api": "npm run dev -w api",
         "db:migrate": "npm run db:migrate -w api",
-        "db:seed": "npm run db:seed -w api"
+        "db:seed": "npm run db:seed -w api",
+        "dev:web": "npm run dev -w web"
     }
 }
